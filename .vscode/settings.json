@@ -31,5 +31,6 @@
   },
   "editor.codeActionsOnSave": {
     "source.organizeImports.biome": "explicit"
-  }
+  },
+  "biome.lsp.bin": "./frontend/node_modules/.bin/biome.cmd"
 }
