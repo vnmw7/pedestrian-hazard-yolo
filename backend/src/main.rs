@@ -1,7 +1,8 @@
-use axum::{routing::post, Router};
+use axum::{routing::post, Router, extract::DefaultBodyLimit};
 use std::net::SocketAddr;
 use std::path::Path;
 use tracing::info;
+use tower_http::cors::{Any, CorsLayer};
 
 mod api;
 mod yolo;
@@ -21,9 +22,19 @@ async fn main() {
     let yolo_model = yolo::YoloModel::new(model_path).expect("Failed to initialize YOLO model");
     let shared_state = std::sync::Arc::new(yolo_model);
 
+    let cors = CorsLayer::new()
+        .allow_methods([axum::http::Method::GET, axum::http::Method::POST])
+        .allow_origin([
+            "http://localhost:5173".parse::<axum::http::HeaderValue>().unwrap(),
+            "http://127.0.0.1:5173".parse::<axum::http::HeaderValue>().unwrap(),
+        ])
+        .allow_headers(Any);
+
     let app = Router::new()
         .route("/api/v1/detect", post(api::detect_objects))
-        .with_state(shared_state);
+        .layer(DefaultBodyLimit::max(10 * 1024 * 1024))
+        .with_state(shared_state)
+        .layer(cors);
 
     // Hugging Face Spaces expect applications to listen on port 7860
     let addr = SocketAddr::from(([0, 0, 0, 0], 7860));
