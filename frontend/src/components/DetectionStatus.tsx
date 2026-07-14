@@ -1,11 +1,3 @@
-/**
- * System: Pedestrian Hazard YOLO
- * Module: Detection UI
- * File URL: frontend/src/components/DetectionStatus.tsx
- * Purpose: Shared UI states for the detection process
- */
-import React from "react";
-
 export type DetectionState =
 	| "idle"
 	| "loading"
@@ -43,7 +35,9 @@ export function DetectionStatus({
 						fill="none"
 						stroke="currentColor"
 						viewBox="0 0 24 24"
+						role="img"
 					>
+						<title>Success</title>
 						<path
 							strokeLinecap="round"
 							strokeLinejoin="round"
@@ -59,7 +53,9 @@ export function DetectionStatus({
 						fill="none"
 						stroke="currentColor"
 						viewBox="0 0 24 24"
+						role="img"
 					>
+						<title>No Detections</title>
 						<path
 							strokeLinecap="round"
 							strokeLinejoin="round"
@@ -75,7 +71,9 @@ export function DetectionStatus({
 						fill="none"
 						stroke="currentColor"
 						viewBox="0 0 24 24"
+						role="img"
 					>
+						<title>Error</title>
 						<path
 							strokeLinecap="round"
 							strokeLinejoin="round"
