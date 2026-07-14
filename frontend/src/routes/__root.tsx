@@ -2,8 +2,8 @@ import { TanStackDevtools } from "@tanstack/react-devtools";
 import {
 	createRootRoute,
 	HeadContent,
-	Scripts,
 	Link,
+	Scripts,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 
@@ -40,13 +40,20 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 				<HeadContent />
 			</head>
 			<body className="bg-slate-50 min-h-screen text-slate-900">
-				<nav className="bg-slate-900 text-white p-4 flex gap-6 shadow-md mb-8 px-8">
+				<nav className="bg-slate-900 text-white flex flex-wrap gap-x-6 gap-y-2 px-4 md:px-8 py-4 shadow-md mb-8">
 					<Link
 						to="/"
 						className="hover:text-indigo-300 font-medium transition-colors"
 						activeProps={{ className: "text-indigo-400 font-bold" }}
 					>
-						Image Detection
+						Home
+					</Link>
+					<Link
+						to="/upload"
+						className="hover:text-indigo-300 font-medium transition-colors"
+						activeProps={{ className: "text-indigo-400 font-bold" }}
+					>
+						Image Upload
 					</Link>
 					<Link
 						to="/simulator"
@@ -56,7 +63,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 						Video Simulator
 					</Link>
 				</nav>
-				{children}
+				<main className="overflow-hidden">{children}</main>
 				<TanStackDevtools
 					config={{
 						position: "bottom-right",
