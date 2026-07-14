@@ -45,9 +45,17 @@ export async function detectImage(
 				} else if (errorData && typeof errorData.message === "string") {
 					errorMessage = errorData.message;
 				}
-			} catch (e) {
+			} catch (_e) {
+				if (_e instanceof Error && _e.name !== "SyntaxError") {
+					throw _e;
+				}
 				// Fallback to text or generic error if not JSON
-				const textError = await response.text().catch(() => null);
+				const textError = await response.text().catch((e) => {
+					if (e instanceof Error && e.name !== "SyntaxError") {
+						throw e;
+					}
+					return null;
+				});
 				if (textError) {
 					errorMessage = textError;
 				}
