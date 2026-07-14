@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as UploadRouteImport } from './routes/upload'
 import { Route as SimulatorRouteImport } from './routes/simulator'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiDetectRouteImport } from './routes/api/detect'
 
 const UploadRoute = UploadRouteImport.update({
   id: '/upload',
@@ -28,35 +29,44 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiDetectRoute = ApiDetectRouteImport.update({
+  id: '/api/detect',
+  path: '/api/detect',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/simulator': typeof SimulatorRoute
   '/upload': typeof UploadRoute
+  '/api/detect': typeof ApiDetectRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/simulator': typeof SimulatorRoute
   '/upload': typeof UploadRoute
+  '/api/detect': typeof ApiDetectRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/simulator': typeof SimulatorRoute
   '/upload': typeof UploadRoute
+  '/api/detect': typeof ApiDetectRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/simulator' | '/upload'
+  fullPaths: '/' | '/simulator' | '/upload' | '/api/detect'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/simulator' | '/upload'
-  id: '__root__' | '/' | '/simulator' | '/upload'
+  to: '/' | '/simulator' | '/upload' | '/api/detect'
+  id: '__root__' | '/' | '/simulator' | '/upload' | '/api/detect'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SimulatorRoute: typeof SimulatorRoute
   UploadRoute: typeof UploadRoute
+  ApiDetectRoute: typeof ApiDetectRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -82,6 +92,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/detect': {
+      id: '/api/detect'
+      path: '/api/detect'
+      fullPath: '/api/detect'
+      preLoaderRoute: typeof ApiDetectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -89,6 +106,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SimulatorRoute: SimulatorRoute,
   UploadRoute: UploadRoute,
+  ApiDetectRoute: ApiDetectRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

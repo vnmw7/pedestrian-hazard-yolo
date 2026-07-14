@@ -2,7 +2,8 @@
  * System: Pedestrian Hazard YOLO
  * Module: API Client
  * File URL: frontend/src/api/detect.ts
- * Purpose: Shared frontend detection system API client to communicate with the backend
+ * Purpose: Client wrapper that posts an image to the SSR proxy route
+ *          (/api/detect) and returns the Result<Detection[], string>.
  */
 
 export type Result<T, E> =
@@ -15,12 +16,6 @@ export type Detection = {
 	bbox: [number, number, number, number];
 };
 
-/**
- * Sends an image to the backend for pedestrian hazard detection.
- *
- * @param image The image (Blob or File) to detect.
- * @returns A Result containing an array of Detections on success, or an error message on failure.
- */
 export async function detectImage(
 	image: Blob,
 ): Promise<Result<Detection[], string>> {
@@ -28,48 +23,24 @@ export async function detectImage(
 		const formData = new FormData();
 		formData.append("image", image);
 
-		const baseUrl = import.meta.env.VITE_BACKEND_URL || "";
-		const response = await fetch(`${baseUrl}/api/v1/detect`, {
+		const response = await fetch("/api/detect", {
 			method: "POST",
 			body: formData,
-			// Note: Do NOT set 'Content-Type' manually when using FormData;
-			// the browser will automatically set it to 'multipart/form-data' with the correct boundary.
 		});
 
 		if (!response.ok) {
-			let errorMessage = `HTTP error! status: ${response.status}`;
-			try {
-				const errorData = await response.json();
-				if (errorData && typeof errorData.error === "string") {
-					errorMessage = errorData.error;
-				} else if (errorData && typeof errorData.message === "string") {
-					errorMessage = errorData.message;
-				}
-			} catch (_e) {
-				if (_e instanceof Error && _e.name !== "SyntaxError") {
-					throw _e;
-				}
-				// Fallback to text or generic error if not JSON
-				const textError = await response.text().catch((e) => {
-					if (e instanceof Error && e.name !== "SyntaxError") {
-						throw e;
-					}
-					return null;
-				});
-				if (textError) {
-					errorMessage = textError;
-				}
-			}
-			return { success: false, error: errorMessage };
+			return {
+				success: false,
+				error: `Request failed: ${response.status} ${response.statusText}`,
+			};
 		}
 
-		const data = await response.json();
-		return { success: true, data: data.detections || [] };
+		return (await response.json()) as Result<Detection[], string>;
 	} catch (error) {
-		let errorMessage = "An unknown network error occurred";
-		if (error instanceof Error) {
-			errorMessage = error.message;
-		}
-		return { success: false, error: errorMessage };
+		const message =
+			error instanceof Error
+				? error.message
+				: "An unknown network error occurred";
+		return { success: false, error: message };
 	}
 }
