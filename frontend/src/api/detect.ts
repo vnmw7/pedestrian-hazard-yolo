@@ -26,7 +26,8 @@ export async function detectImage(image: Blob): Promise<Result<Detection[], stri
     const formData = new FormData();
     formData.append('image', image);
 
-    const response = await fetch('/api/v1/detect', {
+    const baseUrl = import.meta.env.VITE_BACKEND_URL || '';
+    const response = await fetch(`${baseUrl}/api/v1/detect`, {
       method: 'POST',
       body: formData,
       // Note: Do NOT set 'Content-Type' manually when using FormData;
