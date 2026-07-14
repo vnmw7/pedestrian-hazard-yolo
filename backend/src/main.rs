@@ -22,19 +22,27 @@ async fn main() {
     let yolo_model = yolo::YoloModel::new(model_path).expect("Failed to initialize YOLO model");
     let shared_state = std::sync::Arc::new(yolo_model);
 
+    let mut origins = vec![
+        "http://localhost:5173".parse::<axum::http::HeaderValue>().unwrap(),
+        "http://127.0.0.1:5173".parse::<axum::http::HeaderValue>().unwrap(),
+    ];
+    if let Ok(frontend_url) = std::env::var("FRONTEND_URL") {
+        if let Ok(origin) = frontend_url.parse::<axum::http::HeaderValue>() {
+            origins.push(origin);
+        }
+    }
+
     let cors = CorsLayer::new()
         .allow_methods([axum::http::Method::GET, axum::http::Method::POST])
-        .allow_origin([
-            "http://localhost:5173".parse::<axum::http::HeaderValue>().unwrap(),
-            "http://127.0.0.1:5173".parse::<axum::http::HeaderValue>().unwrap(),
-        ])
+        .allow_origin(origins)
         .allow_headers(Any);
 
     let app = Router::new()
         .route("/api/v1/detect", post(api::detect_objects))
         .layer(DefaultBodyLimit::max(10 * 1024 * 1024))
         .with_state(shared_state)
-        .layer(cors);
+        .layer(cors)
+        .layer(tower_http::trace::TraceLayer::new_for_http());
 
     // Hugging Face Spaces expect applications to listen on port 7860
     let addr = SocketAddr::from(([0, 0, 0, 0], 7860));
