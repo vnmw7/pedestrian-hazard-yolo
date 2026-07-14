@@ -35,12 +35,22 @@ pub async fn detect_objects(
         .map_err(|e| (StatusCode::BAD_REQUEST, format!("Multipart error: {}", e)))?
     {
         if field.name() == Some("image") {
-            image_data = Some(
-                field
-                    .bytes()
-                    .await
-                    .map_err(|e| (StatusCode::BAD_REQUEST, format!("Failed to read image bytes: {}", e)))?,
-            );
+            let bytes = field
+                .bytes()
+                .await
+                .map_err(|e| (StatusCode::BAD_REQUEST, format!("Failed to read image bytes: {}", e)))?;
+            
+            if bytes.len() > 10 * 1024 * 1024 {
+                return Err((StatusCode::PAYLOAD_TOO_LARGE, "File exceeds 10 MB limit".to_string()));
+            }
+
+            match image::guess_format(&bytes) {
+                Ok(image::ImageFormat::Jpeg) | Ok(image::ImageFormat::Png) | Ok(image::ImageFormat::WebP) => {
+                    image_data = Some(bytes);
+                }
+                _ => return Err((StatusCode::BAD_REQUEST, "Unsupported format. Only JPEG, PNG, and WebP are allowed.".to_string())),
+            }
+
             break;
         }
     }
@@ -56,9 +66,14 @@ pub async fn detect_objects(
 
     info!("Processing image of size {}x{}", image.width(), image.height());
 
-    let detections = model
+    let allowed_classes = ["person", "bicycle", "car", "motorcycle", "bus", "truck"];
+
+    let detections: Vec<Detection> = model
         .predict(image)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Inference error: {}", e)))?;
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Inference error: {}", e)))?
+        .into_iter()
+        .filter(|d| allowed_classes.contains(&d.class.as_str()))
+        .collect();
 
     Ok(Json(DetectResponse { detections }))
 }
