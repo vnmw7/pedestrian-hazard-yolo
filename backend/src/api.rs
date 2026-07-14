@@ -62,7 +62,10 @@ pub async fn detect_objects(
 
     // Process image
     let image = image::load_from_memory(&image_bytes)
-        .map_err(|e| (StatusCode::BAD_REQUEST, format!("Invalid image: {}", e)))?;
+        .map_err(|e| {
+            tracing::error!("Invalid image format or corrupted data: {}", e);
+            (StatusCode::BAD_REQUEST, format!("Invalid image: {}", e))
+        })?;
 
     info!("Processing image of size {}x{}", image.width(), image.height());
 
@@ -70,7 +73,10 @@ pub async fn detect_objects(
 
     let detections: Vec<Detection> = model
         .predict(image)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Inference error: {}", e)))?
+        .map_err(|e| {
+            tracing::error!("Inference error during model prediction: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, format!("Inference error: {}", e))
+        })?
         .into_iter()
         .filter(|d| allowed_classes.contains(&d.class.as_str()))
         .collect();
