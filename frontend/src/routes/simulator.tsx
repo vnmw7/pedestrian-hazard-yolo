@@ -5,18 +5,36 @@
  * Purpose: Demo the video playback and frame extraction for hazards
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
+import { detectImage, type Detection } from "../api/detect";
+import { DetectionCanvas } from "../components/DetectionCanvas";
 
 export const Route = createFileRoute("/simulator")({ component: Simulator });
 
 function Simulator() {
 	const videoRef = useRef<HTMLVideoElement>(null);
-	const canvasOverlayRef = useRef<HTMLCanvasElement>(null);
 	const offscreenCanvasRef = useRef<HTMLCanvasElement>(null);
 	const intervalRef = useRef<number | null>(null);
-	const [videoSize, setVideoSize] = useState({ width: 0, height: 0 });
+
+	const isRequestRunning = useRef(false);
+	const isMounted = useRef(true);
+
+	const [detections, setDetections] = useState<Detection[]>([]);
+
+	// Ensure cleanup flags
+	useEffect(() => {
+		isMounted.current = true;
+		return () => {
+			isMounted.current = false;
+			if (intervalRef.current) {
+				clearInterval(intervalRef.current);
+			}
+		};
+	}, []);
 
 	const captureFrame = () => {
+		if (isRequestRunning.current) return;
+
 		const video = videoRef.current;
 		const canvas = offscreenCanvasRef.current;
 		if (!video || !canvas) return;
@@ -30,10 +48,17 @@ function Simulator() {
 		ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
 		canvas.toBlob(
-			(blob) => {
+			async (blob) => {
 				if (blob) {
-					console.log("Captured frame blob size (bytes):", blob.size);
-					// Future integration: send blob to detectImage(blob)
+					isRequestRunning.current = true;
+					try {
+						const result = await detectImage(blob);
+						if (isMounted.current && result.success) {
+							setDetections(result.data);
+						}
+					} finally {
+						isRequestRunning.current = false;
+					}
 				}
 			},
 			"image/webp",
@@ -55,23 +80,18 @@ function Simulator() {
 		}
 	};
 
-	// Cleanup on unmount
-	useEffect(() => {
-		return () => {
-			if (intervalRef.current) {
-				clearInterval(intervalRef.current);
-			}
-		};
-	}, []);
-
-	const handleLoadedMetadata = () => {
-		if (videoRef.current) {
-			setVideoSize({
-				width: videoRef.current.videoWidth,
-				height: videoRef.current.videoHeight,
-			});
+	const handleSeeked = () => {
+		if (videoRef.current && videoRef.current.currentTime === 0) {
+			setDetections([]);
 		}
 	};
+
+	const highestConfidenceDetection = useMemo(() => {
+		if (detections.length === 0) return null;
+		return detections.reduce((prev, current) => {
+			return prev.confidence > current.confidence ? prev : current;
+		}, detections[0]);
+	}, [detections]);
 
 	return (
 		<div className="max-w-4xl mx-auto p-8 flex flex-col gap-8 animate-in fade-in duration-500">
@@ -95,15 +115,32 @@ function Simulator() {
 					onPlay={handlePlay}
 					onPause={handlePauseOrEnded}
 					onEnded={handlePauseOrEnded}
-					onLoadedMetadata={handleLoadedMetadata}
+					onSeeked={handleSeeked}
 					className="w-full h-auto block object-contain max-h-[70vh]"
 				/>
-				<canvas
-					ref={canvasOverlayRef}
-					className="absolute top-0 left-0 w-full h-full pointer-events-none"
-					width={videoSize.width}
-					height={videoSize.height}
-				/>
+				<DetectionCanvas targetRef={videoRef} detections={detections} />
+			</div>
+
+			{/* Hazard Warning UI */}
+			<div className="flex flex-col items-center gap-4">
+				<div className="flex items-center gap-4 bg-white px-6 py-4 rounded-xl shadow-sm border border-slate-200 w-full">
+					<div className="flex-1">
+						<h3 className="text-lg font-semibold text-slate-800">
+							Live Detections: {detections.length}
+						</h3>
+					</div>
+					{highestConfidenceDetection && (
+						<div className="px-4 py-2 bg-red-50 border border-red-200 text-red-700 font-bold rounded-lg shadow-inner">
+							Potential hazard: {highestConfidenceDetection.class} detected —{" "}
+							{Math.round(highestConfidenceDetection.confidence * 100)}%
+						</div>
+					)}
+					{!highestConfidenceDetection && (
+						<div className="px-4 py-2 bg-green-50 border border-green-200 text-green-700 font-bold rounded-lg shadow-inner">
+							Clear path. No hazards detected.
+						</div>
+					)}
+				</div>
 			</div>
 
 			{/* Off-screen canvas used purely for generating blobs */}
