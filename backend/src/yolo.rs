@@ -71,23 +71,21 @@ impl YoloModel {
         let conf_threshold = 0.5;
 
         for row in output_t.outer_iter() {
-            let row_slice = row.as_slice().unwrap();
-            
             // Find max class confidence
             let mut max_conf = 0.0;
             let mut class_id = 0;
             for i in 4..84 {
-                if row_slice[i] > max_conf {
-                    max_conf = row_slice[i];
+                if row[i] > max_conf {
+                    max_conf = row[i];
                     class_id = i - 4;
                 }
             }
 
             if max_conf >= conf_threshold {
-                let cx = row_slice[0];
-                let cy = row_slice[1];
-                let w = row_slice[2];
-                let h = row_slice[3];
+                let cx = row[0];
+                let cy = row[1];
+                let w = row[2];
+                let h = row[3];
 
                 // Scale bounding box back to original image size
                 let x_scale = img_width as f32 / 640.0;
