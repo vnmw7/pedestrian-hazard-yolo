@@ -1,5 +1,10 @@
 import { TanStackDevtools } from "@tanstack/react-devtools";
-import { createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
+import {
+	createRootRoute,
+	HeadContent,
+	Scripts,
+	Link,
+} from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 
 import appCss from "../styles.css?url";
@@ -15,7 +20,7 @@ export const Route = createRootRoute({
 				content: "width=device-width, initial-scale=1",
 			},
 			{
-				title: "TanStack Start Starter",
+				title: "Pedestrian Hazard YOLO",
 			},
 		],
 		links: [
@@ -34,7 +39,23 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 			<head>
 				<HeadContent />
 			</head>
-			<body>
+			<body className="bg-slate-50 min-h-screen text-slate-900">
+				<nav className="bg-slate-900 text-white p-4 flex gap-6 shadow-md mb-8 px-8">
+					<Link
+						to="/"
+						className="hover:text-indigo-300 font-medium transition-colors"
+						activeProps={{ className: "text-indigo-400 font-bold" }}
+					>
+						Image Detection
+					</Link>
+					<Link
+						to="/simulator"
+						className="hover:text-indigo-300 font-medium transition-colors"
+						activeProps={{ className: "text-indigo-400 font-bold" }}
+					>
+						Video Simulator
+					</Link>
+				</nav>
 				{children}
 				<TanStackDevtools
 					config={{
