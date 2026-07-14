@@ -1,0 +1,6 @@
+.vscode
+.tanstack
+*.ico
+node_modules
+*.svg
+*.png
