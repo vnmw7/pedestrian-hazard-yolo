@@ -69,17 +69,19 @@ pub async fn detect_objects(
 
     info!("Processing image of size {}x{}", image.width(), image.height());
 
-    let allowed_classes = ["person", "bicycle", "car", "motorcycle", "bus", "truck"];
-
-    let detections: Vec<Detection> = model
-        .predict(image)
-        .map_err(|e| {
-            tracing::error!("Inference error during model prediction: {}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, format!("Inference error: {}", e))
-        })?
-        .into_iter()
-        .filter(|d| allowed_classes.contains(&d.class.as_str()))
-        .collect();
+    let yolo_model = Arc::clone(&model);
+    let detections = tokio::task::spawn_blocking(move || {
+        yolo_model.predict(image).map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| {
+        tracing::error!("Blocking thread join error: {}", e);
+        (StatusCode::INTERNAL_SERVER_ERROR, format!("Inference thread error: {}", e))
+    })?
+    .map_err(|e| {
+        tracing::error!("Inference error during model prediction: {}", e);
+        (StatusCode::INTERNAL_SERVER_ERROR, format!("Inference error: {}", e))
+    })?;
 
     Ok(Json(DetectResponse { detections }))
 }
