@@ -5,8 +5,8 @@
  * Purpose: Demo the video playback and frame extraction for hazards
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState, useMemo } from "react";
-import { detectImage, type Detection } from "../api/detect";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { type Detection, detectImage } from "../api/detect";
 import { DetectionCanvas } from "../components/DetectionCanvas";
 
 export const Route = createFileRoute("/simulator")({ component: Simulator });
