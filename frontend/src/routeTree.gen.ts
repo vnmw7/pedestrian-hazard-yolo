@@ -9,10 +9,15 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as UploadRouteImport } from './routes/upload'
 import { Route as SimulatorRouteImport } from './routes/simulator'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as UploadRouteImport } from './routes/upload'
 
+const UploadRoute = UploadRouteImport.update({
+  id: '/upload',
+  path: '/upload',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SimulatorRoute = SimulatorRouteImport.update({
   id: '/simulator',
   path: '/simulator',
@@ -21,11 +26,6 @@ const SimulatorRoute = SimulatorRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const UploadRoute = UploadRouteImport.update({
-  id: '/upload',
-  path: '/upload',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -61,6 +61,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/upload': {
+      id: '/upload'
+      path: '/upload'
+      fullPath: '/upload'
+      preLoaderRoute: typeof UploadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/simulator': {
       id: '/simulator'
       path: '/simulator'
@@ -73,13 +80,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/upload': {
-      id: '/upload'
-      path: '/upload'
-      fullPath: '/upload'
-      preLoaderRoute: typeof UploadRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
