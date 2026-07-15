@@ -15,6 +15,10 @@ import { defineConfig } from "vite";
 const config = defineConfig({
 	resolve: { tsconfigPaths: true },
 	plugins: [
+		// tanstackStart() must precede cloudflare(): it generates the server
+		// entry modules that the Cloudflare workerd environment then resolves.
+		// Source: https://developers.cloudflare.com/workers/framework-guides/web-apps/tanstack-start/
+		tanstackStart(),
 		cloudflare({
 			viteEnvironment: {
 				name: "ssr",
@@ -22,7 +26,6 @@ const config = defineConfig({
 		}),
 		devtools(),
 		tailwindcss(),
-		tanstackStart(),
 		viteReact(),
 	],
 });
