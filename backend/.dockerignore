@@ -1,0 +1,13 @@
+# System: Pedestrian Hazard YOLO
+# Module: Deployment Container Ignore File
+# File URL: backend/.dockerignore
+# Purpose: Exclude files and folders from the Docker build context
+
+target
+.git
+.gitignore
+*.py
+__pycache__
+test-images
+tests
+README.md

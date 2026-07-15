@@ -1,0 +1,37 @@
+# System: Pedestrian Hazard YOLO
+# Module: Deployment Container
+# File URL: backend/Dockerfile
+# Purpose: Build-stage and runner-stage setup for Axum Rust application with baked YOLOv8n ONNX model
+
+FROM rust:1.82-bookworm AS builder
+
+WORKDIR /app
+
+COPY Cargo.toml Cargo.lock ./
+COPY src ./src
+
+RUN cargo build --release
+
+
+FROM debian:bookworm-slim
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        libssl3 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY --from=builder /app/target/release/backend /app/backend
+
+RUN curl --fail --location \
+    "https://github.com/Hyuto/yolov8-onnx-tensorrt-cpp/raw/master/models/yolov8n.onnx" \
+    --output /app/yolov8n.onnx
+
+ENV RUST_LOG=info
+
+EXPOSE 10000
+
+CMD ["/app/backend"]
