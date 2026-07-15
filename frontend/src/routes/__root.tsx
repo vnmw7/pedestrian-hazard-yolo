@@ -1,11 +1,13 @@
+/**
+ * System: Pedestrian Hazard YOLO
+ * Module: Application Shell
+ * File URL: frontend/src/routes/__root.tsx
+ * Purpose: Define document metadata and the headerless application shell
+ */
 import { TanStackDevtools } from "@tanstack/react-devtools";
-import {
-	createRootRoute,
-	HeadContent,
-	Link,
-	Scripts,
-} from "@tanstack/react-router";
+import { createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
+import { FloatingNavigation } from "../components/FloatingNavigation";
 
 import appCss from "../styles.css?url";
 
@@ -39,31 +41,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 			<head>
 				<HeadContent />
 			</head>
-			<body className="bg-slate-50 min-h-screen text-slate-900">
-				<nav className="bg-slate-900 text-white flex flex-wrap gap-x-6 gap-y-2 px-4 md:px-8 py-4 shadow-md mb-8">
-					<Link
-						to="/"
-						className="hover:text-indigo-300 font-medium transition-colors"
-						activeProps={{ className: "text-indigo-400 font-bold" }}
-					>
-						Home
-					</Link>
-					<Link
-						to="/upload"
-						className="hover:text-indigo-300 font-medium transition-colors"
-						activeProps={{ className: "text-indigo-400 font-bold" }}
-					>
-						Image Upload
-					</Link>
-					<Link
-						to="/simulator"
-						className="hover:text-indigo-300 font-medium transition-colors"
-						activeProps={{ className: "text-indigo-400 font-bold" }}
-					>
-						Video Simulator
-					</Link>
-				</nav>
-				<main className="overflow-hidden">{children}</main>
+			<body className="min-h-dvh bg-zinc-950 text-zinc-950 antialiased">
+				<main>{children}</main>
+				<FloatingNavigation />
 				<TanStackDevtools
 					config={{
 						position: "bottom-right",
