@@ -15,7 +15,7 @@ import { type Detection, detectImage } from "../api/detect";
 import { DetectionCanvas } from "./DetectionCanvas";
 import { getDownscaledDimensions, type MediaDimensions } from "./mediaGeometry";
 
-const CAPTURE_INTERVAL_MS = 1500;
+const CAPTURE_INTERVAL_MS = 10;
 const FRAME_QUALITY = 0.8;
 const CONFIDENCE_PERCENT_MULTIPLIER = 100;
 const MAX_FRAME_DIMENSION_PX = 640;
