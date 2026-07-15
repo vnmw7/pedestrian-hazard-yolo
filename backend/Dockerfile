@@ -3,7 +3,7 @@
 # File URL: backend/Dockerfile
 # Purpose: Build-stage and runner-stage setup for Axum Rust application with baked YOLOv8n ONNX model
 
-FROM rust:1.88-bookworm AS builder
+FROM rust:1.88-trixie AS builder
 
 WORKDIR /app
 
@@ -13,7 +13,7 @@ COPY src ./src
 RUN cargo build --release
 
 
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
