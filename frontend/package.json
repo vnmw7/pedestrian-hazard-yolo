@@ -10,6 +10,8 @@
     "generate-routes": "tsr generate",
     "build": "vite build",
     "preview": "vite preview",
+    "deploy": "pnpm run build && wrangler deploy",
+    "cf-typegen": "wrangler types",
     "test": "vitest run",
     "format": "biome format",
     "lint": "biome lint",
@@ -30,6 +32,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.5",
+    "@cloudflare/vite-plugin": "^1.44.0",
     "@tailwindcss/typography": "^0.5.16",
     "@tanstack/devtools-vite": "latest",
     "@tanstack/router-cli": "^1.132.0",
@@ -42,7 +45,8 @@
     "jsdom": "^28.1.0",
     "typescript": "^6.0.2",
     "vite": "^8.0.0",
-    "vitest": "^4.1.5"
+    "vitest": "^4.1.5",
+    "wrangler": "^4.110.0"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
