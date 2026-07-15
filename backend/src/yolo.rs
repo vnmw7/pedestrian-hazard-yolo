@@ -149,10 +149,9 @@ fn calculate_iou(box1: &[f32; 4], box2: &[f32; 4]) -> f32 {
 }
 
 pub async fn download_model(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let _url = "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8n.pt";
-    let onnx_url = "https://github.com/Hyuto/yolov8-onnx-tensorrt-cpp/raw/master/models/yolov8n.onnx";
+    let onnx_url = "https://media.githubusercontent.com/media/axinc-ai/ailia-models/master/object_detection/yolov8/yolov8n.onnx";
     
-    let response = reqwest::get(onnx_url).await?;
+    let response = reqwest::get(onnx_url).await?.error_for_status()?;
     let mut file = File::create(path).await?;
     let mut stream = response.bytes_stream();
     
@@ -161,6 +160,7 @@ pub async fn download_model(path: &Path) -> Result<(), Box<dyn std::error::Error
         let data = chunk?;
         file.write_all(&data).await?;
     }
+    file.flush().await?;
     
     Ok(())
 }
