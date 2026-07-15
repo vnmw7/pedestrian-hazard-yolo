@@ -24,7 +24,12 @@ const config = defineConfig({
 				name: "ssr",
 			},
 		}),
-		devtools(),
+		devtools({
+			// Source injection adds data-tsd-source attributes whose line/column
+			// can diverge between the SSR (workerd) and browser transforms, causing
+			// React hydration mismatch warnings. Disable only this feature.
+			injectSource: { enabled: false },
+		}),
 		tailwindcss(),
 		viteReact(),
 	],
