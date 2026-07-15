@@ -7,7 +7,8 @@ FROM python:3.11-slim-bookworm AS model-exporter
 
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    CUDA_VISIBLE_DEVICES=""
 
 WORKDIR /model
 
@@ -18,11 +19,16 @@ RUN apt-get update \
         libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# Generate the ONNX artifact from the official Ultralytics model instead of
-# depending on an unversioned third-party ONNX download URL.
+# Install CPU-only PyTorch first so pip does not pull CUDA runtime packages.
+# onnxscript is required by the modern torch.onnx exporter.
 RUN pip install --no-cache-dir \
+        --index-url https://download.pytorch.org/whl/cpu \
+        torch \
+        torchvision \
+    && pip install --no-cache-dir \
         ultralytics==8.3.0 \
         onnx==1.16.2 \
+        onnxscript \
     && python - <<'PY'
 from pathlib import Path
 import shutil
