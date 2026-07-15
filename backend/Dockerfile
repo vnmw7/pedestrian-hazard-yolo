@@ -11,6 +11,13 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
 
 WORKDIR /model
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        libgl1 \
+        libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
 # Generate the ONNX artifact from the official Ultralytics model instead of
 # depending on an unversioned third-party ONNX download URL.
 RUN pip install --no-cache-dir \
