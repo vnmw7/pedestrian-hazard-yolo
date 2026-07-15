@@ -7,23 +7,23 @@
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import type { Detection } from "../api/detect";
-
-interface RenderedMediaBounds {
-	offsetX: number;
-	offsetY: number;
-	scaleX: number;
-	scaleY: number;
-}
+import { getRenderedMediaBounds } from "./mediaGeometry";
 
 interface DetectionCanvasProps {
 	targetRef: React.RefObject<HTMLImageElement | HTMLVideoElement | null>;
 	detections: Detection[];
+	// Coordinate space used by the backend when producing the bounding boxes.
+	sourceDimensions?: {
+		width: number;
+		height: number;
+	};
 	className?: string;
 }
 
 export function DetectionCanvas({
 	targetRef,
 	detections,
+	sourceDimensions,
 	className = "",
 }: DetectionCanvasProps) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -70,13 +70,13 @@ export function DetectionCanvas({
 
 		if (detections.length === 0) return;
 
-		let originalWidth = 0;
-		let originalHeight = 0;
+		let originalWidth = sourceDimensions?.width ?? 0;
+		let originalHeight = sourceDimensions?.height ?? 0;
 
-		if (target instanceof HTMLImageElement) {
+		if (!sourceDimensions && target instanceof HTMLImageElement) {
 			originalWidth = target.naturalWidth;
 			originalHeight = target.naturalHeight;
-		} else if (target instanceof HTMLVideoElement) {
+		} else if (!sourceDimensions && target instanceof HTMLVideoElement) {
 			originalWidth = target.videoWidth;
 			originalHeight = target.videoHeight;
 		}
@@ -84,7 +84,7 @@ export function DetectionCanvas({
 		if (!originalWidth || !originalHeight) return;
 
 		const { offsetX, offsetY, scaleX, scaleY } = getRenderedMediaBounds(
-			target,
+			window.getComputedStyle(target).objectFit,
 			originalWidth,
 			originalHeight,
 			size.width,
@@ -122,7 +122,7 @@ export function DetectionCanvas({
 			context.textBaseline = "middle";
 			context.fillText(text, scaledX + padding, scaledY - bgHeight / 2);
 		}
-	}, [detections, size, targetRef]);
+	}, [detections, size, sourceDimensions, targetRef]);
 
 	const pixelRatio =
 		typeof window === "undefined" ? 1 : window.devicePixelRatio;
@@ -136,49 +136,4 @@ export function DetectionCanvas({
 			style={{ width: size.width, height: size.height }}
 		/>
 	);
-}
-
-function getRenderedMediaBounds(
-	target: HTMLImageElement | HTMLVideoElement,
-	originalWidth: number,
-	originalHeight: number,
-	containerWidth: number,
-	containerHeight: number,
-): RenderedMediaBounds {
-	const objectFit = window.getComputedStyle(target).objectFit;
-	const containScale = Math.min(
-		containerWidth / originalWidth,
-		containerHeight / originalHeight,
-	);
-
-	if (objectFit === "fill") {
-		return {
-			offsetX: 0,
-			offsetY: 0,
-			scaleX: containerWidth / originalWidth,
-			scaleY: containerHeight / originalHeight,
-		};
-	}
-
-	let scale = containScale;
-	if (objectFit === "cover") {
-		scale = Math.max(
-			containerWidth / originalWidth,
-			containerHeight / originalHeight,
-		);
-	} else if (objectFit === "none") {
-		scale = 1;
-	} else if (objectFit === "scale-down") {
-		scale = Math.min(1, containScale);
-	}
-
-	const renderedWidth = originalWidth * scale;
-	const renderedHeight = originalHeight * scale;
-
-	return {
-		offsetX: (containerWidth - renderedWidth) / 2,
-		offsetY: (containerHeight - renderedHeight) / 2,
-		scaleX: scale,
-		scaleY: scale,
-	};
 }
