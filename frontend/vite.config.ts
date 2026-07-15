@@ -19,11 +19,12 @@ const config = defineConfig({
 		// entry modules that the Cloudflare workerd environment then resolves.
 		// Source: https://developers.cloudflare.com/workers/framework-guides/web-apps/tanstack-start/
 		tanstackStart(),
-		cloudflare({
-			viteEnvironment: {
-				name: "ssr",
-			},
-		}),
+		!process.env.VITEST &&
+			cloudflare({
+				viteEnvironment: {
+					name: "ssr",
+				},
+			}),
 		devtools({
 			// Source injection adds data-tsd-source attributes whose line/column
 			// can diverge between the SSR (workerd) and browser transforms, causing

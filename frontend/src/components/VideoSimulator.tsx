@@ -106,6 +106,29 @@ export function VideoSimulator() {
 		};
 	}, []);
 
+	// Start analysis loop once service is ready, catching cases where video auto-played
+	// before the backend was healthy.
+	useEffect(() => {
+		if (serviceStatus === "ready") {
+			const video = videoRef.current;
+			if (video) {
+				if (video.paused) {
+					// Attempt to resume play if it was paused while waiting for backend
+					video.play().catch(() => {});
+				} else if (videoFrameCallbackRef.current === null) {
+					// Video is already playing, but analysis loop wasn't started
+					playbackGenerationRef.current += 1;
+					lastCapturedMediaTimeRef.current = null;
+					setDetectionFrame(null);
+					setAnalysisState("analyzing");
+					videoFrameCallbackRef.current =
+						video.requestVideoFrameCallback(handleVideoFrame);
+				}
+			}
+		}
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [serviceStatus]);
+
 	const captureFrame = (mediaTime: number): boolean => {
 		if (serviceStatus !== "ready") return false;
 		if (isRequestRunningRef.current) return false;
