@@ -1,3 +1,10 @@
+/*
+System: Pedestrian Hazard YOLO
+Module: API
+File URL: backend/src/api.rs
+Purpose: API handlers for object detection, health check, and root service status
+*/
+
 use axum::{
     extract::{Multipart, State},
     http::StatusCode,
@@ -84,4 +91,18 @@ pub async fn detect_objects(
     })?;
 
     Ok(Json(DetectResponse { detections }))
+}
+
+pub async fn root_status() -> Json<serde_json::Value> {
+    Json(serde_json::json!({
+        "service": "pedestrian-hazard-yolo",
+        "status": "running"
+    }))
+}
+
+pub async fn health_check() -> Json<serde_json::Value> {
+    Json(serde_json::json!({
+        "status": "healthy",
+        "model": "loaded"
+    }))
 }

@@ -1,4 +1,11 @@
-use axum::{routing::post, Router, extract::DefaultBodyLimit};
+/*
+System: Pedestrian Hazard YOLO
+Module: Main
+File URL: backend/src/main.rs
+Purpose: Configure and start the Axum web server with CORS, trace logging, and routes for YOLO detections and health checks
+*/
+
+use axum::{routing::{get, post}, Router, extract::DefaultBodyLimit};
 use std::net::SocketAddr;
 use std::path::Path;
 use tracing::info;
@@ -38,14 +45,20 @@ async fn main() {
         .allow_headers(Any);
 
     let app = Router::new()
+        .route("/", get(api::root_status))
+        .route("/health", get(api::health_check))
         .route("/api/v1/detect", post(api::detect_objects))
         .layer(DefaultBodyLimit::max(10 * 1024 * 1024))
         .with_state(shared_state)
         .layer(cors)
         .layer(tower_http::trace::TraceLayer::new_for_http());
 
-    // Hugging Face Spaces expect applications to listen on port 7860
-    let addr = SocketAddr::from(([0, 0, 0, 0], 7860));
+    let port = std::env::var("PORT")
+        .ok()
+        .and_then(|value| value.parse::<u16>().ok())
+        .unwrap_or(7860);
+
+    let addr = SocketAddr::from(([0, 0, 0, 0], port));
     info!("Server listening on {}", addr);
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
