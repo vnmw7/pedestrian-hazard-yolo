@@ -3,7 +3,7 @@
 # File URL: backend/Dockerfile
 # Purpose: Build-stage and runner-stage setup for Axum Rust application with baked YOLOv8n ONNX model
 
-FROM rust:1.88-bookworm AS builder
+FROM rust:1.88-trixie AS builder
 
 WORKDIR /app
 
@@ -13,7 +13,7 @@ COPY src ./src
 RUN cargo build --release
 
 
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -26,9 +26,10 @@ WORKDIR /app
 
 COPY --from=builder /app/target/release/backend /app/backend
 
-RUN curl --fail --location \
-    "https://github.com/Hyuto/yolov8-onnx-tensorrt-cpp/raw/master/models/yolov8n.onnx" \
-    --output /app/yolov8n.onnx
+RUN curl --fail --location --retry 3 --retry-delay 2 \
+    "https://media.githubusercontent.com/media/axinc-ai/ailia-models/master/object_detection/yolov8/yolov8n.onnx" \
+    --output /app/yolov8n.onnx \
+    && test "$(stat -c%s /app/yolov8n.onnx)" -gt 5000000
 
 ENV RUST_LOG=info
 
