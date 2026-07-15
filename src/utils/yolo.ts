@@ -7,6 +7,8 @@
 
 import * as ort from "onnxruntime-web/wasm";
 
+export const MODEL_INPUT_SIZE_PX = 640;
+
 // Configure WASM backend for Cloudflare Pages compatibility.
 // Use the plain (non-threaded) WASM binary (numThreads: 1) so it doesn't require
 // SharedArrayBuffer (which needs special COOP/COEP headers).
@@ -59,6 +61,25 @@ export interface Box {
 	h: number;
 	prob: number;
 	classId: number;
+}
+
+export async function detectObjects(
+	session: ort.InferenceSession,
+	source: HTMLVideoElement | HTMLImageElement | HTMLCanvasElement,
+	originalWidth: number,
+	originalHeight: number,
+): Promise<Box[]> {
+	const tensor = preprocess(source, MODEL_INPUT_SIZE_PX, MODEL_INPUT_SIZE_PX);
+	const output = await session.run({ [session.inputNames[0]]: tensor });
+	const outputTensor = output[session.outputNames[0]];
+
+	return postprocess(
+		outputTensor,
+		originalWidth,
+		originalHeight,
+		MODEL_INPUT_SIZE_PX,
+		MODEL_INPUT_SIZE_PX,
+	);
 }
 
 export function postprocess(
