@@ -1,7 +1,61 @@
 # System: Pedestrian Hazard YOLO
 # Module: Deployment Container
 # File URL: backend/Dockerfile
-# Purpose: Build-stage and runner-stage setup for Axum Rust application with baked YOLOv8n ONNX model
+# Purpose: Build the Axum Rust API and export an official YOLOv8n model to ONNX
+
+FROM python:3.11-slim-bookworm AS model-exporter
+
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    CUDA_VISIBLE_DEVICES=""
+
+WORKDIR /model
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        libgl1 \
+        libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install CPU-only PyTorch first so pip does not pull CUDA runtime packages.
+# onnxscript is required by the modern torch.onnx exporter.
+RUN pip install --no-cache-dir \
+        --index-url https://download.pytorch.org/whl/cpu \
+        torch \
+        torchvision \
+    && pip install --no-cache-dir \
+        ultralytics==8.3.0 \
+        onnx==1.16.2 \
+        onnxscript \
+    && python - <<'PY'
+from pathlib import Path
+import shutil
+
+from ultralytics import YOLO
+
+exported = Path(
+    YOLO("yolov8n.pt").export(
+        format="onnx",
+        imgsz=640,
+        opset=12,
+        simplify=False,
+        dynamic=False,
+    )
+)
+
+destination = Path("/model/yolov8n.onnx")
+if exported.resolve() != destination.resolve():
+    shutil.copy2(exported, destination)
+
+size = destination.stat().st_size
+if size <= 5_000_000:
+    raise RuntimeError(f"Exported ONNX model is unexpectedly small: {size} bytes")
+
+print(f"Exported {destination} ({size} bytes)")
+PY
+
 
 FROM rust:1.88-trixie AS builder
 
@@ -18,18 +72,15 @@ FROM debian:trixie-slim
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
-        curl \
         libssl3 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 COPY --from=builder /app/target/release/backend /app/backend
+COPY --from=model-exporter /model/yolov8n.onnx /app/yolov8n.onnx
 
-RUN curl --fail --location --retry 3 --retry-delay 2 \
-    "https://media.githubusercontent.com/media/axinc-ai/ailia-models/master/object_detection/yolov8/yolov8n.onnx" \
-    --output /app/yolov8n.onnx \
-    && test "$(stat -c%s /app/yolov8n.onnx)" -gt 5000000
+RUN test "$(stat -c%s /app/yolov8n.onnx)" -gt 5000000
 
 ENV RUST_LOG=info
 

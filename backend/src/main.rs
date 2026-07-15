@@ -5,11 +5,11 @@ File URL: backend/src/main.rs
 Purpose: Configure and start the Axum web server with CORS, trace logging, and routes for YOLO detections and health checks
 */
 
-use axum::{routing::{get, post}, Router, extract::DefaultBodyLimit};
+use axum::{extract::DefaultBodyLimit, routing::{get, post}, Router};
 use std::net::SocketAddr;
 use std::path::Path;
-use tracing::info;
 use tower_http::cors::{Any, CorsLayer};
+use tracing::info;
 
 mod api;
 mod yolo;
@@ -19,12 +19,13 @@ async fn main() {
     tracing_subscriber::fmt::init();
     info!("Starting YOLOv8 backend server...");
 
-    // Initialize YOLO model
+    // The production image must contain the model exported during the Docker build.
+    // Failing immediately is safer than downloading an unverified model at runtime.
     let model_path = Path::new("yolov8n.onnx");
-    if !model_path.exists() {
-        info!("Model yolov8n.onnx not found. Downloading...");
-        yolo::download_model(model_path).await.expect("Failed to download model");
-    }
+    assert!(
+        model_path.exists(),
+        "Bundled model yolov8n.onnx is missing from the runtime image"
+    );
 
     let yolo_model = yolo::YoloModel::new(model_path).expect("Failed to initialize YOLO model");
     let shared_state = std::sync::Arc::new(yolo_model);
