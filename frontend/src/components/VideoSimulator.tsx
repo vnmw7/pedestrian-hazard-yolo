@@ -13,21 +13,35 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { type Detection, detectImage } from "../api/detect";
 import { DetectionCanvas } from "./DetectionCanvas";
+import { getDownscaledDimensions, type MediaDimensions } from "./mediaGeometry";
 
 const CAPTURE_INTERVAL_MS = 500;
 const FRAME_QUALITY = 0.8;
 const CONFIDENCE_PERCENT_MULTIPLIER = 100;
+const MAX_FRAME_DIMENSION_PX = 640;
+const MEDIA_TIME_EPSILON_SECONDS = 0.05;
+const EMPTY_DETECTIONS: Detection[] = [];
 type AnalysisState = "analyzing" | "ready" | "unavailable";
+
+interface DetectionFrame {
+	detections: Detection[];
+	sourceDimensions: MediaDimensions;
+}
 
 export function VideoSimulator() {
 	const videoRef = useRef<HTMLVideoElement>(null);
 	const offscreenCanvasRef = useRef<HTMLCanvasElement>(null);
-	const intervalRef = useRef<number | null>(null);
+	const videoFrameCallbackRef = useRef<number | null>(null);
+	const lastCapturedMediaTimeRef = useRef<number | null>(null);
+	const playbackGenerationRef = useRef(0);
 	const isRequestRunningRef = useRef(false);
 	const isMountedRef = useRef(true);
-	const [detections, setDetections] = useState<Detection[]>([]);
+	const [detectionFrame, setDetectionFrame] = useState<DetectionFrame | null>(
+		null,
+	);
 	const [analysisState, setAnalysisState] =
 		useState<AnalysisState>("analyzing");
+	const detections = detectionFrame?.detections ?? EMPTY_DETECTIONS;
 
 	// Ensure cleanup flags
 	useEffect(() => {
@@ -35,14 +49,15 @@ export function VideoSimulator() {
 
 		return () => {
 			isMountedRef.current = false;
-			if (intervalRef.current !== null) {
-				window.clearInterval(intervalRef.current);
+			const video = videoRef.current;
+			if (video && videoFrameCallbackRef.current !== null) {
+				video.cancelVideoFrameCallback(videoFrameCallbackRef.current);
 			}
 		};
 	}, []);
 
-	const captureFrame = () => {
-		if (isRequestRunningRef.current) return;
+	const captureFrame = (mediaTime: number): boolean => {
+		if (isRequestRunningRef.current) return false;
 
 		const video = videoRef.current;
 		const canvas = offscreenCanvasRef.current;
@@ -51,13 +66,20 @@ export function VideoSimulator() {
 			!canvas ||
 			video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
 		) {
-			return;
+			return false;
 		}
 
-		canvas.width = video.videoWidth;
-		canvas.height = video.videoHeight;
+		const sourceDimensions = getDownscaledDimensions(
+			video.videoWidth,
+			video.videoHeight,
+			MAX_FRAME_DIMENSION_PX,
+		);
+		const playbackGeneration = playbackGenerationRef.current;
+
+		canvas.width = sourceDimensions.width;
+		canvas.height = sourceDimensions.height;
 		const context = canvas.getContext("2d");
-		if (!context) return;
+		if (!context) return false;
 
 		context.drawImage(video, 0, 0, canvas.width, canvas.height);
 		isRequestRunningRef.current = true;
@@ -70,12 +92,21 @@ export function VideoSimulator() {
 
 				try {
 					const result = await detectImage(blob);
-					if (isMountedRef.current) {
+					const currentVideo = videoRef.current;
+					const isCurrentTimeline =
+						playbackGeneration === playbackGenerationRef.current &&
+						currentVideo !== null &&
+						currentVideo.currentTime + MEDIA_TIME_EPSILON_SECONDS >= mediaTime;
+
+					if (isMountedRef.current && isCurrentTimeline) {
 						if (result.success) {
-							setDetections(result.data);
+							setDetectionFrame({
+								detections: result.data,
+								sourceDimensions,
+							});
 							setAnalysisState("ready");
 						} else {
-							setDetections([]);
+							setDetectionFrame(null);
 							setAnalysisState("unavailable");
 						}
 					}
@@ -86,31 +117,61 @@ export function VideoSimulator() {
 			"image/webp",
 			FRAME_QUALITY,
 		);
+
+		return true;
+	};
+
+	const handleVideoFrame: VideoFrameRequestCallback = (_now, metadata) => {
+		const video = videoRef.current;
+		if (!video || video.paused || video.ended) return;
+
+		const lastCapturedMediaTime = lastCapturedMediaTimeRef.current;
+		const hasLooped =
+			lastCapturedMediaTime !== null &&
+			metadata.mediaTime < lastCapturedMediaTime;
+		const elapsedMs =
+			lastCapturedMediaTime === null || hasLooped
+				? CAPTURE_INTERVAL_MS
+				: (metadata.mediaTime - lastCapturedMediaTime) * 1000;
+
+		if (elapsedMs >= CAPTURE_INTERVAL_MS && captureFrame(metadata.mediaTime)) {
+			lastCapturedMediaTimeRef.current = metadata.mediaTime;
+		}
+
+		videoFrameCallbackRef.current =
+			video.requestVideoFrameCallback(handleVideoFrame);
 	};
 
 	const handlePlay = () => {
-		// Clear any existing interval just in case
-		if (intervalRef.current !== null) {
-			window.clearInterval(intervalRef.current);
+		const video = videoRef.current;
+		if (!video) return;
+
+		// Clear any existing video-frame callback just in case
+		if (videoFrameCallbackRef.current !== null) {
+			video.cancelVideoFrameCallback(videoFrameCallbackRef.current);
 		}
-		setDetections([]);
+		playbackGenerationRef.current += 1;
+		lastCapturedMediaTimeRef.current = null;
+		setDetectionFrame(null);
 		setAnalysisState("analyzing");
-		captureFrame();
-		intervalRef.current = window.setInterval(captureFrame, CAPTURE_INTERVAL_MS);
+		videoFrameCallbackRef.current =
+			video.requestVideoFrameCallback(handleVideoFrame);
 	};
 
 	const handlePauseOrEnded = () => {
-		if (intervalRef.current !== null) {
-			window.clearInterval(intervalRef.current);
-			intervalRef.current = null;
+		const video = videoRef.current;
+		if (video && videoFrameCallbackRef.current !== null) {
+			video.cancelVideoFrameCallback(videoFrameCallbackRef.current);
+			videoFrameCallbackRef.current = null;
 		}
+		playbackGenerationRef.current += 1;
 	};
 
 	const handleSeeked = () => {
-		if (videoRef.current?.currentTime === 0) {
-			setDetections([]);
-			setAnalysisState("analyzing");
-		}
+		playbackGenerationRef.current += 1;
+		lastCapturedMediaTimeRef.current = null;
+		setDetectionFrame(null);
+		setAnalysisState("analyzing");
 	};
 
 	const highestConfidenceDetection = useMemo(() => {
@@ -142,7 +203,11 @@ export function VideoSimulator() {
 			>
 				<track kind="captions" />
 			</video>
-			<DetectionCanvas targetRef={videoRef} detections={detections} />
+			<DetectionCanvas
+				targetRef={videoRef}
+				detections={detections}
+				sourceDimensions={detectionFrame?.sourceDimensions}
+			/>
 
 			{/* Hazard Warning UI */}
 			<div className="pointer-events-none absolute inset-x-0 bottom-16 z-20 flex items-end justify-between gap-3 p-4 sm:bottom-14 sm:p-6">
