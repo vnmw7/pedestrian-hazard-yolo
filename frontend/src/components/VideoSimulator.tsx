@@ -43,6 +43,56 @@ export function VideoSimulator() {
 		useState<AnalysisState>("analyzing");
 	const detections = detectionFrame?.detections ?? EMPTY_DETECTIONS;
 
+	const [serviceStatus, setServiceStatus] = useState<
+		"checking" | "ready" | "failed"
+	>("checking");
+	const [wakeMessage, setWakeMessage] = useState("Starting detection service…");
+
+	// Health check polling for Render cold start
+	useEffect(() => {
+		let isMounted = true;
+		let attempts = 0;
+		const maxAttempts = 18; // 18 * 5s = 90 seconds
+		let timeoutId: ReturnType<typeof setTimeout>;
+
+		const checkHealth = async () => {
+			if (attempts >= 5) {
+				setWakeMessage("Loading YOLO model…");
+			} else {
+				setWakeMessage("Starting detection service…");
+			}
+
+			try {
+				const response = await fetch("/api/health");
+				const result = await response.json();
+				if (result.success && result.data?.status === "healthy") {
+					if (isMounted) {
+						setServiceStatus("ready");
+					}
+					return;
+				}
+			} catch (_e) {
+				// Ignore and retry
+			}
+
+			attempts++;
+			if (attempts >= maxAttempts) {
+				if (isMounted) {
+					setServiceStatus("failed");
+				}
+			} else {
+				timeoutId = setTimeout(checkHealth, 5000);
+			}
+		};
+
+		checkHealth();
+
+		return () => {
+			isMounted = false;
+			clearTimeout(timeoutId);
+		};
+	}, []);
+
 	// Ensure cleanup flags
 	useEffect(() => {
 		isMountedRef.current = true;
@@ -57,6 +107,7 @@ export function VideoSimulator() {
 	}, []);
 
 	const captureFrame = (mediaTime: number): boolean => {
+		if (serviceStatus !== "ready") return false;
 		if (isRequestRunningRef.current) return false;
 
 		const video = videoRef.current;
@@ -143,6 +194,12 @@ export function VideoSimulator() {
 	};
 
 	const handlePlay = () => {
+		if (serviceStatus !== "ready") {
+			const video = videoRef.current;
+			if (video) video.pause();
+			return;
+		}
+
 		const video = videoRef.current;
 		if (!video) return;
 
@@ -267,6 +324,35 @@ export function VideoSimulator() {
 					{detections.length} detected
 				</div>
 			</div>
+
+			{/* Cold Start Overlay */}
+			{serviceStatus !== "ready" && (
+				<div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/80 px-6 text-center backdrop-blur-md">
+					{serviceStatus === "checking" ? (
+						<div className="flex flex-col items-center gap-4">
+							<LoaderCircle className="size-12 animate-spin text-amber-500" />
+							<h3 className="text-xl font-semibold tracking-wide text-white">
+								{wakeMessage}
+							</h3>
+							<p className="max-w-md text-sm text-white/60">
+								Free Render instances spin down after 15 minutes of inactivity.
+								Waking up the backend can take up to a minute.
+							</p>
+						</div>
+					) : (
+						<div className="flex flex-col items-center gap-4">
+							<WifiOff className="size-12 text-rose-500" />
+							<h3 className="text-xl font-semibold tracking-wide text-rose-400">
+								Detection Service Offline
+							</h3>
+							<p className="max-w-md text-sm text-white/60">
+								The service did not respond in time. Please refresh the page to
+								try again.
+							</p>
+						</div>
+					)}
+				</div>
+			)}
 
 			{/* Off-screen canvas used purely for generating blobs */}
 			<canvas ref={offscreenCanvasRef} className="hidden" />
