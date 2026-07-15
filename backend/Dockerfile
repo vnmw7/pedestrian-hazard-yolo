@@ -26,9 +26,10 @@ WORKDIR /app
 
 COPY --from=builder /app/target/release/backend /app/backend
 
-RUN curl --fail --location \
-    "https://github.com/Hyuto/yolov8-onnx-tensorrt-cpp/raw/master/models/yolov8n.onnx" \
-    --output /app/yolov8n.onnx
+RUN curl --fail --location --retry 3 --retry-delay 2 \
+    "https://media.githubusercontent.com/media/axinc-ai/ailia-models/master/object_detection/yolov8/yolov8n.onnx" \
+    --output /app/yolov8n.onnx \
+    && test "$(stat -c%s /app/yolov8n.onnx)" -gt 5000000
 
 ENV RUST_LOG=info
 
