@@ -1,3 +1,9 @@
+/**
+ * System: Pedestrian Hazard YOLO
+ * Module: Image Uploader
+ * File URL: frontend/src/components/ImageUploader.tsx
+ * Purpose: Validate and select local images for hazard detection
+ */
 import { UploadCloud } from "lucide-react";
 import type React from "react";
 import { useCallback, useState } from "react";
@@ -7,7 +13,7 @@ interface ImageUploaderProps {
 	disabled?: boolean;
 }
 
-const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 export function ImageUploader({
@@ -41,7 +47,7 @@ export function ImageUploader({
 				);
 				return;
 			}
-			if (file.size > MAX_SIZE) {
+			if (file.size > MAX_FILE_SIZE_BYTES) {
 				setError("File size exceeds the 10 MB maximum limit.");
 				return;
 			}
@@ -79,34 +85,22 @@ export function ImageUploader({
 				onDragLeave={handleDrag}
 				onDragOver={handleDrag}
 				onDrop={handleDrop}
-				className={`flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-2xl transition-all duration-200 ${
+				className={`flex h-80 w-full flex-col items-center justify-center rounded-3xl border border-dashed transition-all duration-200 ${
 					disabled
-						? "cursor-not-allowed border-slate-200 bg-slate-50 opacity-60"
+						? "cursor-not-allowed border-zinc-200 bg-white/50 opacity-60"
 						: isDragging
-							? "cursor-pointer border-indigo-500 bg-indigo-50 scale-[1.01]"
-							: "cursor-pointer border-slate-300 bg-slate-50 hover:bg-slate-100 hover:border-indigo-400"
+							? "scale-[1.01] cursor-pointer border-zinc-950 bg-white"
+							: "cursor-pointer border-zinc-300 bg-white/75 hover:border-zinc-500 hover:bg-white"
 				}`}
 			>
-				<div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4 pointer-events-none">
-					<UploadCloud
-						className={`w-12 h-12 mb-4 transition-colors ${
-							disabled
-								? "text-slate-300"
-								: isDragging
-									? "text-indigo-500"
-									: "text-slate-400"
-						}`}
-					/>
-					<p className="mb-2 text-lg font-semibold text-slate-700">
-						<span className="text-indigo-600">Click to upload</span> or drag and
-						drop
+				<div className="pointer-events-none flex flex-col items-center justify-center px-4 text-center">
+					<div className="mb-5 flex size-12 items-center justify-center rounded-full bg-zinc-950 text-white shadow-lg shadow-zinc-950/15">
+						<UploadCloud aria-hidden="true" className="size-5" />
+					</div>
+					<p className="mb-2 text-base font-semibold tracking-tight text-zinc-900">
+						Drop an image or browse
 					</p>
-					<p className="text-sm text-slate-500 mb-1">
-						Accepted formats: JPEG, PNG, WebP
-					</p>
-					<p className="text-sm font-medium text-slate-500">
-						Maximum file size: 10 MB
-					</p>
+					<p className="text-sm text-zinc-500">JPEG, PNG or WebP · 10 MB max</p>
 				</div>
 				<input
 					type="file"
@@ -117,7 +111,7 @@ export function ImageUploader({
 				/>
 			</label>
 			{error && (
-				<p className="mt-3 text-sm font-medium text-red-500 animate-in fade-in slide-in-from-top-1">
+				<p className="mt-3 text-sm font-medium text-red-600 animate-in fade-in slide-in-from-top-1">
 					{error}
 				</p>
 			)}
